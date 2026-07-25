@@ -1,0 +1,15 @@
+.pio/
+.vscode/
+
+include/secrets.h
+
+*.bin
+*.elf
+*.map
+
+.DS_Store
+Thumbs.db
+
+*.log
+
+compile_commands.json
