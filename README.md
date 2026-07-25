@@ -1,147 +1,430 @@
 # EchoLens
 
-> Real-time speech transcription on an ESP32-S3 using Deepgram Streaming API.
-
-EchoLens is an embedded speech transcription system built around the ESP32-S3. It captures audio from an I2S microphone, streams it to the Deepgram Streaming API over a secure WebSocket connection, receives live transcripts, and displays them on a 128×64 OLED display.
-
-The project is designed with modularity and scalability in mind, allowing future expansion into multilingual transcription, translation, speaker identification, song lyric transcription, transcript logging, and web-based monitoring.
+> A real-time wearable speech transcription system powered by the ESP32-S3.
 
 ---
 
-## Features
+# Overview
 
-### Current Goals (v1)
+EchoLens is an embedded systems project that captures live speech using an I2S microphone, streams audio to a cloud speech recognition service over a secure WebSocket connection, and displays the resulting transcript on a small OLED display with minimal latency.
 
-- Live speech transcription
-- ESP32-S3 based
-- INMP441 I2S microphone
-- Deepgram Streaming API
-- Secure WebSocket communication
-- SSD1306 OLED output
-- Modular firmware architecture
-- FreeRTOS-based task separation
+The project is designed as an engineering exercise in building a modular, maintainable, and extensible embedded application rather than simply creating a working prototype.
+
+The long-term objective is to build a wearable assistive device capable of displaying live captions in real time while remaining flexible enough to support future features such as translation, offline transcription, speaker identification, and AI-assisted interaction.
 
 ---
 
-## Planned Features
+# Project Goals
 
-- Multilingual transcription
-- Translation mode
-- Song lyric transcription
-- Transcript logging
-- SD card support
-- Web dashboard
-- Mobile companion application
-- Speaker identification
-- AI summarization
-- Offline transcription support
+The project emphasizes software architecture as much as functionality.
 
----
+Primary goals include:
 
-# Hardware
+- Real-time audio capture
+- Low-latency speech transcription
+- Smooth OLED rendering
+- Stable Wi-Fi communication
+- Modular software architecture
+- Clean separation of responsibilities
+- High maintainability
+- Future extensibility
 
-| Component          | Model                  |
-| ------------------ | ---------------------- |
-| MCU                | ESP32-S3-WROOM-1-N16R8 |
-| Microphone         | INMP441                |
-| Display            | SSD1306 OLED 128×64    |
-| Communication      | Wi-Fi                  |
-| Speech Recognition | Deepgram Streaming API |
+The codebase should remain understandable even as additional features are added.
 
 ---
 
-# Architecture
+# Current Hardware
 
-```
-        INMP441
-           │
-           ▼
-    Audio Capture Task
-           │
-           ▼
-     Audio Ring Buffer
-           │
-           ▼
-   Network/WebSocket Task
-           │
-           ▼
-      Deepgram API
-           │
-           ▼
-     JSON Transcript
-           │
-           ▼
-    Transcript Parser
-           │
-           ▼
-      Display Task
-           │
-           ▼
-      SSD1306 OLED
-```
+## Microcontroller
+
+ESP32-S3-WROOM-1-N16R8
+
+- Dual-core Xtensa LX7
+- 16 MB Flash
+- 8 MB PSRAM
+- Native USB
+- Wi-Fi
+- Bluetooth (currently unused)
 
 ---
 
-# Project Structure
+## Microphone
 
-```
-EchoLens
-│
-├── platformio.ini
-├── README.md
-├── .gitignore
-│
-├── include/
-│   ├── config.h
-│   ├── constants.h
-│   ├── pins.h
-│   ├── secrets.h
-│   └── version.h
-│
-├── src/
-│   ├── main.cpp
-│   │
-│   ├── audio/
-│   ├── display/
-│   ├── network/
-│   ├── system/
-│   └── transcription/
-│
-├── lib/
-├── test/
-└── docs/
-```
+INMP441
+
+Interface:
+
+- I2S
+
+Responsibilities:
+
+- Capture raw PCM audio
+- Continuous streaming
+- Mono input
+
+---
+
+## Display
+
+SSD1306 OLED
+
+Resolution:
+
+128 × 64 pixels
+
+Interface:
+
+- I²C
+
+Responsibilities:
+
+- Display transcript
+- Word wrapping
+- Automatic scrolling
+- Status indicators
 
 ---
 
 # Software Stack
 
-- PlatformIO
-- Arduino Framework
-- ESP32 Arduino Core
-- FreeRTOS
-- ArduinoJson
-- WebSockets
-- Adafruit SSD1306
-- Adafruit GFX
+## Framework
+
+Arduino Framework
 
 ---
 
-# Repository Philosophy
+## Build System
 
-EchoLens follows a modular architecture.
+PlatformIO
 
-Each module has a single responsibility.
+---
 
-| Module        | Responsibility                          |
-| ------------- | --------------------------------------- |
-| audio         | Capture microphone samples              |
-| network       | Wi-Fi and WebSocket communication       |
-| transcription | Deepgram communication and JSON parsing |
-| display       | OLED rendering                          |
-| system        | Shared utilities and infrastructure     |
+## Language
 
-This separation makes the project easier to maintain and allows individual components to be replaced without affecting the rest of the system.
+C++17
+
+---
+
+## Communication
+
+- Wi-Fi
+- TLS
+- Secure WebSocket
+
+---
+
+## Speech Recognition
+
+Current provider:
+
+Deepgram Live API
+
+The software should remain provider-independent so other services can be integrated later without changing unrelated modules.
+
+---
+
+# Design Philosophy
+
+EchoLens is intentionally organized as a collection of independent modules.
+
+Every module should have a single responsibility.
+
+Modules should communicate through well-defined interfaces rather than directly depending on each other.
+
+Whenever possible:
+
+- High cohesion
+- Low coupling
+- Explicit ownership
+- Clear data flow
+
+The objective is to make replacing one subsystem require little or no modification to others.
+
+---
+
+# System Architecture
+
+The application follows a streaming pipeline.
+
+```
+Microphone
+      │
+      ▼
+Audio Capture
+      │
+      ▼
+Ring Buffer
+      │
+      ▼
+Network Streaming
+      │
+      ▼
+Speech Recognition
+      │
+      ▼
+Transcript Parser
+      │
+      ▼
+Display Renderer
+      │
+      ▼
+OLED
+```
+
+Each stage performs exactly one task.
+
+---
+
+# Planned Project Structure
+
+```
+EchoLens/
+│
+├── include/
+│
+├── src/
+│   ├── audio/
+│   ├── network/
+│   ├── transcription/
+│   ├── display/
+│   └── system/
+│
+├── lib/
+├── docs/
+├── test/
+│
+├── platformio.ini
+├── README.md
+├── AGENTS.md
+└── LICENSE
+```
+
+---
+
+# Module Responsibilities
+
+## audio/
+
+Responsible only for microphone capture.
+
+Responsibilities:
+
+- Initialize I2S
+- Read microphone samples
+- Normalize audio
+- Deliver PCM frames
+
+This module must never know how networking works.
+
+---
+
+## network/
+
+Responsible only for communication.
+
+Responsibilities:
+
+- Wi-Fi connection
+- Reconnection
+- TLS
+- WebSocket
+- Packet transmission
+
+This module should never manipulate audio or display data.
+
+---
+
+## transcription/
+
+Responsible for speech recognition.
+
+Responsibilities:
+
+- Communicate with transcription provider
+- Receive responses
+- Parse JSON
+- Produce transcript strings
+
+No display logic belongs here.
+
+---
+
+## display/
+
+Responsible for rendering.
+
+Responsibilities:
+
+- Word wrapping
+- Line buffering
+- Scrolling
+- Cursor management
+- OLED updates
+
+Display code should not know where transcripts originate.
+
+---
+
+## system/
+
+Shared infrastructure.
+
+Examples include:
+
+- Ring buffer
+- Logger
+- Timing utilities
+- Future queues
+- Common helpers
+
+---
+
+# Runtime Architecture
+
+The project is intended to use FreeRTOS tasks instead of placing all logic inside `loop()`.
+
+Planned tasks include:
+
+## Audio Task
+
+Captures microphone data continuously.
+
+Produces PCM frames.
+
+---
+
+## Network Task
+
+Consumes audio frames.
+
+Maintains WebSocket connection.
+
+Streams audio.
+
+Receives transcription responses.
+
+---
+
+## Display Task
+
+Consumes parsed transcript messages.
+
+Updates OLED efficiently.
+
+---
+
+Future tasks may include:
+
+- Battery monitoring
+- User interface
+- BLE
+- Translation
+- AI assistant
+
+---
+
+# Data Flow
+
+```
+INMP441
+
+↓
+
+PCM Samples
+
+↓
+
+Ring Buffer
+
+↓
+
+WebSocket
+
+↓
+
+Deepgram
+
+↓
+
+JSON Response
+
+↓
+
+Transcript
+
+↓
+
+Renderer
+
+↓
+
+OLED
+```
+
+---
+
+# Memory Strategy
+
+The project aims to minimize unnecessary allocations during runtime.
+
+General principles:
+
+- Prefer static allocation where practical.
+- Reuse buffers whenever possible.
+- Avoid frequent heap allocations.
+- Keep the audio path allocation-free after initialization.
+- Use PSRAM only where appropriate.
+
+These guidelines may evolve as implementation progresses.
+
+---
+
+# Error Handling
+
+The application should continue operating whenever recovery is possible.
+
+Expected recovery mechanisms include:
+
+- Wi-Fi reconnection
+- WebSocket reconnection
+- Provider reconnect
+- Audio buffer recovery
+- Timeout handling
+
+Errors should be logged and isolated rather than causing a complete restart whenever feasible.
+
+---
+
+# Logging
+
+Logging should assist development without cluttering application logic.
+
+Typical log categories:
+
+- System
+- Audio
+- Network
+- Transcription
+- Display
+
+Logging behavior may later become configurable.
+
+---
+
+# Coding Principles
+
+The project favors readable code over clever code.
+
+General principles:
+
+- Small functions
+- Clear interfaces
+- Descriptive names
+- Minimal global state
+- Explicit ownership
+- Consistent formatting
+
+Maintainability is considered more important than writing the shortest possible code.
 
 ---
 
@@ -149,279 +432,113 @@ This separation makes the project easier to maintain and allows individual compo
 
 ## Phase 0
 
-- Project initialization
-- Verify toolchain
-- Hello World
+Project initialization.
+
+- PlatformIO
+- Build verification
+- Repository setup
 
 ---
 
 ## Phase 1
 
-Hardware verification
+Hardware verification.
 
 - Wi-Fi
 - OLED
-- INMP441
+- Microphone
 
 ---
 
 ## Phase 2
 
-Audio subsystem
+Audio capture.
 
-- Configure I2S
-- Capture PCM
-- Verify microphone quality
+- I2S initialization
+- PCM acquisition
+- Audio validation
 
 ---
 
 ## Phase 3
 
-Networking
+Networking.
 
-- Wi-Fi
-- TLS
 - Secure WebSocket
-- Deepgram connection
+- Provider connection
 
 ---
 
 ## Phase 4
 
-Streaming
+Audio streaming.
 
-- Continuous audio streaming
 - Ring buffer
-- Packet scheduling
+- Continuous transmission
 
 ---
 
 ## Phase 5
 
-Transcription
+Transcription.
 
-- Receive JSON
-- Parse transcript
-- Print to Serial
+- JSON parsing
+- Transcript extraction
 
 ---
 
 ## Phase 6
 
-Display
+Display.
 
-- OLED rendering
+- Text rendering
+- Scrolling
 - Word wrapping
-- Scrolling text
 
 ---
 
 ## Phase 7
 
-Optimization
+Optimization.
 
 - FreeRTOS tasks
-- Queue optimization
-- Memory optimization
+- Buffer tuning
 - Latency reduction
 
 ---
 
 ## Phase 8
 
-Reliability
+Robustness.
 
-- Automatic reconnect
-- Error recovery
-- Watchdog
-- Buffer protection
-
----
-
-# FreeRTOS Task Layout
-
-```
-Audio Task
-    │
-    ▼
-Audio Ring Buffer
-    │
-    ▼
-Network Task
-    │
-    ▼
-Transcript Queue
-    │
-    ▼
-Display Task
-```
-
-Each task performs one well-defined job and communicates using queues or buffers instead of directly calling one another.
+- Recovery logic
+- Error handling
+- Stability improvements
 
 ---
 
-# Getting Started
+# Future Features
 
-## Clone
+The architecture is intentionally designed to support future expansion.
 
-```bash
-git clone https://github.com/<username>/EchoLens.git
+Potential additions include:
 
-cd EchoLens
-```
-
----
-
-## Install Dependencies
-
-Open the project using PlatformIO in VS Code.
-
-PlatformIO will automatically install all required libraries defined in `platformio.ini`.
-
----
-
-## Configure Secrets
-
-Create:
-
-```
-include/secrets.h
-```
-
-Example:
-
-```cpp
-#pragma once
-
-#define WIFI_SSID "YOUR_WIFI"
-#define WIFI_PASSWORD "YOUR_PASSWORD"
-
-#define DEEPGRAM_API_KEY "YOUR_API_KEY"
-```
-
-This file is ignored by Git.
-
----
-
-## Build
-
-```
-PlatformIO: Build
-```
-
-or
-
-```bash
-pio run
-```
-
----
-
-## Upload
-
-```bash
-pio run --target upload
-```
-
----
-
-## Serial Monitor
-
-```bash
-pio device monitor
-```
-
----
-
-# Dependencies
-
-- ArduinoJson
-- WebSockets
-- Adafruit SSD1306
-- Adafruit GFX
-
-All dependencies are managed automatically by PlatformIO.
-
----
-
-# Coding Guidelines
-
-- One responsibility per module.
-- Keep functions short and focused.
-- Prefer `constexpr` over macros where appropriate.
-- Avoid global variables unless necessary.
-- Separate hardware, networking, and application logic.
-- Commit small, working changes frequently.
-
----
-
-# Git Workflow
-
-Example milestones:
-
-```
-Initial project
-
-↓
-
-OLED initialized
-
-↓
-
-Microphone initialized
-
-↓
-
-Wi-Fi connected
-
-↓
-
-Deepgram connected
-
-↓
-
-Streaming audio
-
-↓
-
-Receiving transcripts
-
-↓
-
-OLED rendering
-
-↓
-
-Version 1.0
-```
-
----
-
-# Future Enhancements
-
-- Translation
-- Multiple transcription providers
-- Local Whisper server support
-- Web interface
-- Transcript storage
-- Speaker diarization
-- AI summarization
+- Local Whisper transcription
+- Multiple speech providers
+- Automatic language detection
+- Live translation
+- Speaker recognition
+- Voice activity detection
+- Battery management
+- Configuration interface
 - OTA firmware updates
-- SD card logging
-- Bluetooth configuration
+- BLE companion application
+- AI assistant integration
+
+Not all planned features are guaranteed to be implemented.
 
 ---
 
-# License
+# Development Status
 
-This project is licensed under the MIT License.
-
----
-
-# Acknowledgements
-
-- Espressif Systems
-- Deepgram
-- PlatformIO
-- Arduino
-- Adafruit
+The project is currently in Reviewing and Debugging Phase.
