@@ -97,6 +97,10 @@ Arduino Framework
 
 PlatformIO
 
+The committed PlatformIO environment targets the ESP32-S3-WROOM-1-N16R8
+(16 MB flash, 8 MB OPI PSRAM). Confirm the physical module and wiring before
+uploading.
+
 ---
 
 ## Language
@@ -542,3 +546,16 @@ Not all planned features are guaranteed to be implemented.
 # Development Status
 
 The project is currently in Reviewing and Debugging Phase.
+
+---
+
+# First-Time Setup
+
+1. Copy `include/secrets.example.h` to `include/secrets.h`.
+2. Fill in the Wi-Fi and Deepgram values in `secrets.h`.
+3. Provision the PEM-encoded CA certificate that validates `api.deepgram.com`
+   into `DeepgramConfig::caCertificate` (from your secure provisioning source).
+   EchoLens fails closed if no CA certificate is configured.
+4. Build with `pio run`.
+
+`secrets.h` is intentionally ignored by Git. Do not commit it.

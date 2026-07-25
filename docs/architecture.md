@@ -7,7 +7,8 @@
 - `network/` provides generic WiFi + secure WebSocket primitives with no
   Deepgram-specific framing.
 - `transcription/` owns the `TranscriptionProvider` interface. Only this
-  layer knows about Deepgram's message schema.
+  layer knows about Deepgram's message schema. It receives a provider-neutral
+  `system::WebSocketTransport` interface rather than depending on `network/`.
 - `display/` is split into `OledDisplay` (hardware primitives) and
   `TranscriptRenderer` (word wrap / scrolling), so a future e-ink panel or
   larger OLED only requires a new `OledDisplay`-compatible class.
@@ -19,7 +20,7 @@ INMP441 --I2S--> Microphone --samples--> AudioRingBuffer
                                               |
                                      NetworkTask reads chunks
                                               |
-                                DeepgramProvider.sendAudio()
+                         WebSocketTransport -> DeepgramProvider.sendAudio()
                                               |
                                   Deepgram Streaming API (wss)
                                               |
@@ -45,6 +46,5 @@ overrun handling (oldest samples are dropped, never silently corrupted).
   WebSocket re-handshake).
 - Add exponential backoff to `WifiManager::poll()` (currently fixed
   interval).
-- `StaticJsonDocument` capacity in `parser.cpp` should be profiled against
-  real Deepgram payload sizes once smart-format / diarization features are
-  enabled.
+- Profile the fixed `StaticJsonDocument` capacity in `parser.cpp` against real
+  Deepgram payloads once smart-format / diarization features are enabled.

@@ -12,8 +12,10 @@
 
 #include "audio/microphone.h"
 #include "display/oled.h"
+#include "display/boot_animation.h"
 #include "display/renderer.h"
 #include "network/wifi.h"
+#include "network/websocket.h"
 #include "system/logger.h"
 #include "system/ringbuffer.h"
 #include "transcription/deepgram.h"
@@ -47,7 +49,8 @@ system::AudioRingBuffer g_audioRing(constants::kRingBufferSamples);
 network::WifiManager g_wifi(g_config.wifi.ssid, g_config.wifi.password,
                              g_config.wifi.connectTimeoutMs);
 
-transcription::DeepgramProvider g_transcriptionProvider(g_config.deepgram);
+network::SecureWebSocketClient g_webSocket;
+transcription::DeepgramProvider g_transcriptionProvider(g_config.deepgram, g_webSocket);
 
 display::OledDisplay g_oled(display::OledConfig{
     .width = constants::kOledWidth,
@@ -97,7 +100,10 @@ void NetworkTask(void* /*param*/) {
         strncpy(msg.text, result.text.c_str(), sizeof(msg.text) - 1);
         msg.isFinal = result.isFinal;
         msg.speechFinal = result.speechFinal;
-        xQueueSend(g_transcriptQueue, &msg, 0);
+        if (g_transcriptQueue != nullptr &&
+            xQueueSend(g_transcriptQueue, &msg, 0) != pdTRUE) {
+            system::Logger::warning(kTag, "Transcript queue full; dropping update");
+        }
     });
 
     g_transcriptionProvider.begin();
@@ -148,6 +154,11 @@ void SystemTask(void* /*param*/) {
     system::Logger::info(kTag, "SystemTask started");
 
     for (;;) {
+        const size_t droppedSamples = g_audioRing.takeDroppedSamples();
+        if (droppedSamples > 0) {
+            system::Logger::warning(kTag, "Audio overrun: dropped %u samples",
+                                    static_cast<unsigned>(droppedSamples));
+        }
         system::Logger::debug(kTag, "Heap free: %u bytes, min free: %u bytes",
                                static_cast<unsigned>(ESP.getFreeHeap()),
                                static_cast<unsigned>(ESP.getMinFreeHeap()));
@@ -156,43 +167,57 @@ void SystemTask(void* /*param*/) {
     }
 }
 
+bool StartTask(TaskFunction_t task, const char* name, uint32_t stackWords,
+               UBaseType_t priority, BaseType_t core) {
+    if (xTaskCreatePinnedToCore(task, name, stackWords, nullptr, priority, nullptr, core) != pdPASS) {
+        system::Logger::error(kTag, "Failed to start %s", name);
+        return false;
+    }
+    return true;
+}
+
 }  // namespace
 
 void setup() {
     system::Logger::begin(115200);
     system::Logger::info(kTag, "EchoLens v%s booting", version::kString);
 
-    if (!g_wifi.connect()) {
-        system::Logger::error(kTag, "Initial WiFi connect failed; NetworkTask will retry");
-    }
-
-    if (!g_oled.begin()) {
+    const bool displayReady = g_oled.begin();
+    if (!displayReady) {
         system::Logger::error(kTag, "OLED init failed; continuing without display");
+    } else {
+        display::BootAnimation bootAnimation(g_oled);
+        bootAnimation.play();
+        g_renderer.setInterimText("EchoLens ready. Listening...");
+        g_renderer.render();
     }
-    // Keep the boot message as a replaceable preview so it never becomes
-    // part of the first spoken transcript page.
-    g_renderer.setInterimText("EchoLens ready. Listening...");
-    g_renderer.render();
 
-    if (!g_microphone.begin()) {
+    const bool microphoneReady = g_microphone.begin();
+    if (!microphoneReady) {
         system::Logger::error(kTag, "Microphone init failed; audio pipeline disabled");
     }
 
-    g_transcriptQueue = xQueueCreate(constants::kTranscriptQueueLength, sizeof(TranscriptMessage));
-    if (g_transcriptQueue == nullptr) {
+    if (displayReady) {
+        g_transcriptQueue = xQueueCreate(constants::kTranscriptQueueLength, sizeof(TranscriptMessage));
+    }
+    if (displayReady && g_transcriptQueue == nullptr) {
         system::Logger::error(kTag, "Failed to create transcript queue");
     }
 
-    xTaskCreatePinnedToCore(AudioTask, "AudioTask", constants::kAudioTaskStackWords, nullptr,
-                             constants::kAudioTaskPriority, nullptr, 1);
-    xTaskCreatePinnedToCore(NetworkTask, "NetworkTask", constants::kNetworkTaskStackWords, nullptr,
-                             constants::kNetworkTaskPriority, nullptr, 0);
-    xTaskCreatePinnedToCore(DisplayTask, "DisplayTask", constants::kDisplayTaskStackWords, nullptr,
-                             constants::kDisplayTaskPriority, nullptr, 0);
-    xTaskCreatePinnedToCore(SystemTask, "SystemTask", constants::kSystemTaskStackWords, nullptr,
-                             constants::kSystemTaskPriority, nullptr, 0);
+    if (microphoneReady) {
+        StartTask(AudioTask, "AudioTask", constants::kAudioTaskStackWords,
+                  constants::kAudioTaskPriority, 1);
+    }
+    StartTask(NetworkTask, "NetworkTask", constants::kNetworkTaskStackWords,
+              constants::kNetworkTaskPriority, 0);
+    if (g_transcriptQueue != nullptr) {
+        StartTask(DisplayTask, "DisplayTask", constants::kDisplayTaskStackWords,
+                  constants::kDisplayTaskPriority, 0);
+    }
+    StartTask(SystemTask, "SystemTask", constants::kSystemTaskStackWords,
+              constants::kSystemTaskPriority, 0);
 
-    system::Logger::info(kTag, "All tasks started");
+    system::Logger::info(kTag, "Task startup sequence complete");
 }
 
 void loop() {

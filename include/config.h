@@ -24,6 +24,10 @@ struct DeepgramConfig {
   const char *host = constants::kDeepgramHost;
   const char *path = constants::kDeepgramPath;
   uint16_t port = constants::kDeepgramPort;
+  // Supply the PEM-encoded issuing CA through provisioning before enabling
+  // the provider. A null value fails closed rather than creating an insecure
+  // TLS connection.
+  const char *caCertificate = nullptr;
 };
 
 struct AppConfig {

@@ -14,24 +14,13 @@ constexpr const char* kTag = "WiFi";
 WifiManager::WifiManager(const char* ssid, const char* password, uint32_t connectTimeoutMs)
     : ssid_(ssid), password_(password), connectTimeoutMs_(connectTimeoutMs) {}
 
-bool WifiManager::connect() {
+void WifiManager::begin() {
     system::Logger::info(kTag, "Connecting to SSID '%s'", ssid_);
 
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid_, password_);
-
-    const uint32_t startMs = millis();
-    while (WiFi.status() != WL_CONNECTED) {
-        if (millis() - startMs > connectTimeoutMs_) {
-            system::Logger::error(kTag, "Connection timed out");
-            return false;
-        }
-        vTaskDelay(pdMS_TO_TICKS(200));
-    }
-
-    system::Logger::info(kTag, "Connected, IP: %s", WiFi.localIP().toString().c_str());
     lastAttemptMs_ = millis();
-    return true;
+    started_ = true;
 }
 
 bool WifiManager::isConnected() const {
@@ -43,6 +32,11 @@ void WifiManager::poll() {
         return;
     }
 
+    if (!started_) {
+        begin();
+        return;
+    }
+
     const uint32_t now = millis();
     if (now - lastAttemptMs_ < constants::kWifiRetryIntervalMs) {
         return;
@@ -51,7 +45,7 @@ void WifiManager::poll() {
 
     system::Logger::warning(kTag, "Link down, attempting reconnect");
     WiFi.disconnect();
-    WiFi.begin(ssid_, password_);
+    begin();
 }
 
 }  // namespace echolens::network

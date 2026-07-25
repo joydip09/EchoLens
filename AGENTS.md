@@ -289,7 +289,10 @@ transcription
 system
 ```
 
-Avoid direct dependencies between sibling modules.
+Avoid direct dependencies between sibling modules. When `transcription/`
+needs transport behavior, it may depend only on a provider-neutral interface
+in `system/`; `network/` supplies the concrete implementation and `main.cpp`
+injects it. This keeps provider code independent of network implementations.
 
 Example:
 

@@ -12,8 +12,14 @@ constexpr const char* kTag = "WebSocket";
 SecureWebSocketClient::SecureWebSocketClient() = default;
 
 void SecureWebSocketClient::configure(const char* host, uint16_t port, const char* path,
-                                       const char* extraHeaders) {
-    client_.beginSSL(host, port, path);
+                                       const char* extraHeaders, const char* caCertificate) {
+    configured_ = caCertificate != nullptr && caCertificate[0] != '\0';
+    if (!configured_) {
+        system::Logger::error(kTag, "No CA certificate configured; refusing insecure TLS");
+        return;
+    }
+
+    client_.beginSslWithCA(host, port, path, caCertificate);
     if (extraHeaders != nullptr) {
         client_.setExtraHeaders(extraHeaders);
     }
@@ -26,21 +32,25 @@ void SecureWebSocketClient::configure(const char* host, uint16_t port, const cha
     });
 }
 
-void SecureWebSocketClient::onMessage(MessageCallback callback) {
+void SecureWebSocketClient::onMessage(system::WebSocketMessageCallback callback) {
     messageCallback_ = std::move(callback);
 }
 
-void SecureWebSocketClient::onConnectionChange(ConnectionCallback callback) {
+void SecureWebSocketClient::onConnectionChange(system::WebSocketConnectionCallback callback) {
     connectionCallback_ = std::move(callback);
 }
 
 void SecureWebSocketClient::begin() {
-    // beginSSL() above already primes the connection; loop() drives it.
-    system::Logger::info(kTag, "WebSocket client starting");
+    if (configured_) {
+        // The client is configured above; loop() drives it non-blockingly.
+        system::Logger::info(kTag, "WebSocket client starting");
+    }
 }
 
 void SecureWebSocketClient::poll() {
-    client_.loop();
+    if (configured_) {
+        client_.loop();
+    }
 }
 
 bool SecureWebSocketClient::sendBinary(const uint8_t* data, size_t length) {

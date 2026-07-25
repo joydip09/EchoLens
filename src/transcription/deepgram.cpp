@@ -8,12 +8,14 @@ namespace {
 constexpr const char* kTag = "Deepgram";
 }  // namespace
 
-DeepgramProvider::DeepgramProvider(const DeepgramConfig& config) : config_(config) {
+DeepgramProvider::DeepgramProvider(const DeepgramConfig& config, system::WebSocketTransport& socket)
+    : config_(config), socket_(socket) {
     authHeader_ = std::string("Authorization: Token ") + config_.apiKey;
 }
 
 void DeepgramProvider::begin() {
-    socket_.configure(config_.host, config_.port, config_.path, authHeader_.c_str());
+    socket_.configure(config_.host, config_.port, config_.path, authHeader_.c_str(),
+                      config_.caCertificate);
 
     socket_.onMessage([this](const uint8_t* data, size_t length, bool isBinary) {
         handleMessage(data, length, isBinary);

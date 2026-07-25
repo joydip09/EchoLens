@@ -6,8 +6,8 @@
 #include <string>
 
 #include "../../include/config.h"
-#include "../network/websocket.h"
 #include "parser.h"
+#include "../system/websocket_transport.h"
 
 // Provider abstraction: the rest of the firmware talks to a
 // TranscriptionProvider interface, never to Deepgram directly. Swapping
@@ -34,7 +34,7 @@ public:
 
 class DeepgramProvider : public TranscriptionProvider {
 public:
-    explicit DeepgramProvider(const DeepgramConfig& config);
+    DeepgramProvider(const DeepgramConfig& config, system::WebSocketTransport& socket);
 
     void begin() override;
     void poll() override;
@@ -47,7 +47,7 @@ private:
     void handleConnectionChange(bool connected);
 
     DeepgramConfig config_;
-    network::SecureWebSocketClient socket_;
+    system::WebSocketTransport& socket_;
     TranscriptCallback transcriptCallback_;
     std::string authHeader_;
 };

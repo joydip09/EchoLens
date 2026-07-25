@@ -12,9 +12,8 @@ class WifiManager {
 public:
     WifiManager(const char* ssid, const char* password, uint32_t connectTimeoutMs);
 
-    // Blocks (bounded by connectTimeoutMs) until associated or timed out.
-    // Returns true on success.
-    bool connect();
+    // Starts an association attempt and returns immediately.
+    void begin();
 
     bool isConnected() const;
 
@@ -28,6 +27,7 @@ private:
     const char* password_;
     uint32_t connectTimeoutMs_;
     uint32_t lastAttemptMs_ = 0;
+    bool started_ = false;
 };
 
 }  // namespace echolens::network
