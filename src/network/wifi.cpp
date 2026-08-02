@@ -29,8 +29,14 @@ bool WifiManager::isConnected() const {
 
 void WifiManager::poll() {
     if (isConnected()) {
+        if (!wasConnected_) {
+            system::Logger::info(kTag, "Connected, IP: %s", WiFi.localIP().toString().c_str());
+            wasConnected_ = true;
+        }
         return;
     }
+
+    wasConnected_ = false;
 
     if (!started_) {
         begin();

@@ -28,6 +28,7 @@ private:
     uint32_t connectTimeoutMs_;
     uint32_t lastAttemptMs_ = 0;
     bool started_ = false;
+    bool wasConnected_ = false;
 };
 
 }  // namespace echolens::network

@@ -553,9 +553,10 @@ The project is currently in Reviewing and Debugging Phase.
 
 1. Copy `include/secrets.example.h` to `include/secrets.h`.
 2. Fill in the Wi-Fi and Deepgram values in `secrets.h`.
-3. Provision the PEM-encoded CA certificate that validates `api.deepgram.com`
-   into `DeepgramConfig::caCertificate` (from your secure provisioning source).
-   EchoLens fails closed if no CA certificate is configured.
-4. Build with `pio run`.
+3. Build with `pio run`.
 
 `secrets.h` is intentionally ignored by Git. Do not commit it.
+
+The public ISRG Root X1 trust anchor required by Deepgram is committed in
+`include/certificates.h`; review it when updating dependencies or if the
+provider's certificate chain changes.
